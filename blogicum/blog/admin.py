@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Location, Post
+from .models import Category, Location, Post, Comment
 
 admin.site.empty_value_display = 'Не задано'
 
@@ -8,6 +8,11 @@ admin.site.empty_value_display = 'Не задано'
 class PostInline(admin.StackedInline):
     model = Post
     extra = 0
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('text',)
 
 
 @admin.register(Category)

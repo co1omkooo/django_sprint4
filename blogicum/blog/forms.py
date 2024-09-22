@@ -1,9 +1,6 @@
 from django import forms
-from django.contrib.auth import get_user_model
 
-from .models import Post, Comment
-
-User = get_user_model()
+from .models import Post, Comment, User
 
 
 class PostForm(forms.ModelForm):
@@ -20,11 +17,6 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
         fields = ('text',)
-        widgets = {
-            'text': forms.Textarea(
-                attrs={'cols': '10', 'rows': '5'}
-            )
-        }
 
 
 class ProfileEditForm(forms.ModelForm):
