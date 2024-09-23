@@ -5,29 +5,24 @@ from .models import Post
 
 
 def filter_posts(
-        queryset=Post.objects,
-        pub_date_filter=timezone.now(),
+        set_post=Post.objects,
         is_published_filter=True,
-        category_is_published_filter=True,
-        filter=True
+        filter=True,
+        ordering=Post._meta.original_attrs['ordering']
 ):
+    queryset = set_post.select_related(
+        'author',
+        'location',
+        'category',
+    ).annotate(
+        comment_count=Count('comments')
+    ).order_by('-pub_date')
+
+    queryset_filter = queryset.filter(
+        pub_date__lte=timezone.now(),
+        is_published=is_published_filter,
+        category__is_published=True
+    )
     if filter:
-        return queryset.filter(
-            pub_date__lte=pub_date_filter,
-            is_published=is_published_filter,
-            category__is_published=category_is_published_filter
-        ).annotate(
-            comment_count=Count('comments')
-        ).select_related(
-            'author',
-            'location',
-            'category'
-        ).order_by('-pub_date')
-    else:
-        return queryset.select_related(
-            'author',
-            'location',
-            'category',
-        ).annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
+        return queryset_filter
+    return queryset
