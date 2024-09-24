@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
-from blog.constants import CHARACTER_LIMIT, MAX_LENGTH
+from blog.constants import CHARACTER_LIMIT, LENGTH_TITLE
 
 User = get_user_model()
 
@@ -24,7 +24,7 @@ class PublishedCreatedModel(models.Model):
 
 class Location(PublishedCreatedModel):
     name = models.CharField(
-        max_length=MAX_LENGTH,
+        max_length=LENGTH_TITLE,
         verbose_name='Название места'
     )
 
@@ -39,7 +39,7 @@ class Location(PublishedCreatedModel):
 
 class Category(PublishedCreatedModel):
     title = models.CharField(
-        max_length=MAX_LENGTH,
+        max_length=LENGTH_TITLE,
         verbose_name='Заголовок'
     )
     description = models.TextField(verbose_name='Описание')
@@ -61,7 +61,7 @@ class Category(PublishedCreatedModel):
 
 class Post(PublishedCreatedModel):
     title = models.CharField(
-        max_length=MAX_LENGTH,
+        max_length=LENGTH_TITLE,
         verbose_name='Заголовок'
     )
     text = models.TextField(verbose_name='Текст')
@@ -97,7 +97,7 @@ class Post(PublishedCreatedModel):
         verbose_name = 'публикация'
         verbose_name_plural = 'Публикации'
         default_related_name = 'posts'
-        ordering = ('-pub_date',)
+        ordering = ['-pub_date']
 
     def __str__(self):
         return self.title[:CHARACTER_LIMIT]

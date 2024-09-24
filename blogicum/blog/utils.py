@@ -5,24 +5,25 @@ from .models import Post
 
 
 def filter_posts(
-        set_post=Post.objects,
-        is_published_filter=True,
-        filter=True,
-        ordering=Post._meta.original_attrs['ordering']
+        posts_object=Post.objects,
+        do_related=True,
+        do_annotate=True,
+        do_filter=True,
 ):
-    queryset = set_post.select_related(
-        'author',
-        'location',
-        'category',
-    ).annotate(
-        comment_count=Count('comments')
-    ).order_by('-pub_date')
-
-    queryset_filter = queryset.filter(
-        pub_date__lte=timezone.now(),
-        is_published=is_published_filter,
-        category__is_published=True
-    )
-    if filter:
-        return queryset_filter
-    return queryset
+    if do_related:
+        posts_object = posts_object.select_related(
+            'author',
+            'location',
+            'category',
+        )
+    if do_annotate:
+        posts_object = posts_object.annotate(
+            comment_count=Count('comments')
+        ).order_by(*Post._meta.ordering)
+    if do_filter:
+        posts_object = posts_object.filter(
+            pub_date__lte=timezone.now(),
+            is_published=True,
+            category__is_published=True
+        )
+    return posts_object

@@ -1,7 +1,6 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.utils.functional import cached_property
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -10,10 +9,10 @@ from django.views.generic import (
     UpdateView,
 )
 
-from blog.constants import POSTS_PAGE
+from blog.constants import PAGINATE_COUNT
 from blog.models import Category, Comment, Post, User
 from .forms import PostForm, ProfileEditForm, CommentForm
-from .utils import filter_posts, timezone
+from .utils import filter_posts
 
 
 class PostMixin():
@@ -24,7 +23,7 @@ class PostMixin():
         if self.get_object().author != request.user:
             return redirect(
                 'blog:post_detail',
-                post_id=self.kwargs[self.pk_url_kwarg]
+                self.kwargs[self.pk_url_kwarg]
             )
         return super().dispatch(request, *args, **kwargs)
 
@@ -32,56 +31,50 @@ class PostMixin():
 class IndexListView(ListView):
     model = Post
     template_name = 'blog/index.html'
-    paginate_by = POSTS_PAGE
+    paginate_by = PAGINATE_COUNT
     queryset = filter_posts()
 
 
 class CategoryPostsListView(ListView):
     model = Post
     template_name = 'blog/category.html'
-    paginate_by = POSTS_PAGE
+    paginate_by = PAGINATE_COUNT
 
-    @cached_property
-    def category_cached(self):
-        category = get_object_or_404(
+    def get_category(self):
+        return get_object_or_404(
             Category,
             slug=self.kwargs['category_slug'],
             is_published=True
         )
-        return category
 
     def get_queryset(self):
-        return filter_posts(self.category_cached.posts)
+        return filter_posts(self.get_category().posts)
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['category'] = self.category_cached
-        return context
+        return super().get_context_data(**kwargs, category=self.get_category())
 
 
 class ProfileListView(ListView):
     model = Post
     template_name = 'blog/profile.html'
-    paginate_by = POSTS_PAGE
+    paginate_by = PAGINATE_COUNT
 
-    @cached_property
-    def profile_cached(self):
-        profile = get_object_or_404(
+    def get_author(self):
+        return get_object_or_404(
             User,
             username=self.kwargs['username']
         )
-        return profile
 
     def get_queryset(self):
         return filter_posts(
-            self.profile_cached.posts,
-            filter=(self.profile_cached != self.request.user)
+            self.get_author().posts,
+            do_filter=(self.get_author() != self.request.user)
         )
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['profile'] = self.profile_cached
-        return context
+        # context = super().get_context_data(**kwargs)
+        # context['profile'] = self.get_author()
+        return super().get_context_data(**kwargs, profile=self.get_author())
 
 
 class ProfileUpdateView(LoginRequiredMixin, UpdateView):
@@ -120,27 +113,29 @@ class PostDetailView(DetailView):
         if post.author == self.request.user:
             return post
         return get_object_or_404(
-            Post,
-            pub_date__lte=timezone.now(),
-            is_published=True,
-            category__is_published=True,
+            filter_posts(
+                do_annotate=False,
+                do_related=False
+            ),
             pk=self.kwargs['post_id'],
         )
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = CommentForm()
-        context['comments'] = self.object.comments.select_related('author')
-        return context
+        return super().get_context_data(
+            **kwargs,
+            form=CommentForm(),
+            comments=self.object.comments.select_related('author')
+        )
 
 
 class PostDeleteView(PostMixin, LoginRequiredMixin, DeleteView):
     template_name = 'blog/create.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['form'] = PostForm(instance=self.object)
-        return context
+        return super().get_context_data(
+            **kwargs,
+            form=PostForm(instance=self.object)
+        )
 
     def get_success_url(self):
         return reverse('blog:profile', args=[self.request.user.username])
